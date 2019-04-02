@@ -569,6 +569,43 @@ _mh2_ =
     }
     json2
 
+zz :: Result Type_2
+zz =
+  xDecodeJsonWith
+    { a2: \json (rest :: Type_0) -> Right $ Just 1002
+    , a3: \json (rest :: Type_0) -> Right $ Just "bye"
+    , a4: \json (rest :: Type_0) -> Right $ Just false
+    }
+    json2
+
+zz1_2 :: Result Type_2
+zz1_2 =
+  xDecodeJsonWith
+    { a2: \json (rest :: Type_0) -> Right $ Just (rest.a0)
+    , a3: \json (rest :: Type_0) -> Right $ Just "bye"
+    , a4: \json (rest :: Type_0) -> Right $ Just false
+    }
+    json2
+
+zz1_2_ :: Result Type_2
+zz1_2_ =
+  xDecodeJsonWith
+    { a2: \json rest -> Right $ Just (rest.a0)
+    , a3: \json rest -> Right $ Just $ show rest.a0
+    , a4: \json rest -> Right $ Just $ (rest.a1 `mod` 2 == 0)
+    }
+    json2
+
+zz1_2__ :: Result Type_2
+zz1_2__ =
+  xDecodeJsonWith
+    { a4: \json rest -> Right $ isEven <$> rest.a2
+    }
+    json2
+  where
+  isEven :: Int -> Boolean
+  isEven i = (i `mod` 2) == 0
+
 instance functorMaybe_ :: Functor Maybe' where
   map fn (Maybe' (Just x)) = Maybe' $ Just (fn x)
   map _  _                 = Maybe' Nothing
