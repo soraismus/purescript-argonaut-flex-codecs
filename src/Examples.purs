@@ -21,7 +21,12 @@ import Data.Maybe
 import Data.Status.Class (class Status, report, reportError)
 import Type.Proxy
 import Type.Row (type (+), RProxy(RProxy))
-import Data.Argonaut.FlexDecode
+import Data.Argonaut.Decode.Flex
+import Data.Argonaut.Decode.Flex.Builder
+import Data.Argonaut.Decode.Standard
+import Data.Argonaut.Decode.Standard.Builder
+import Data.Argonaut.Decode.X
+import Data.Argonaut.Decode.X.Builder
 import Prim.RowList as PrimRL
 
 type TypeRep_0   = ( a0 :: Int, a1 :: Int )
