@@ -1,14 +1,4 @@
--- are all instances of DecodeCases/TypeEquals necessary
--- still too many copies of of json/object error message
--- maybe the heterogenous library pertains to this; is this redundant?
--- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
--- the others can be based on the general case
--- try downgrading Monad to Bind
--- `unsafeCoerce` is used b/c at this point every Builder's src is {}.
--- Use of `unsafeCoerce` is unsightly, of course,
--- so try to generalize the type signature or introduce a bind-like
--- function for record mergers.
--- Consider using the more-general Flex-scheme with `Identity` or (-> a)
+-- Put FlexGDecodeJson class in its own file.
 module Data.Argonaut.Decode.X where
 
 import Prelude
@@ -69,21 +59,21 @@ instance __xDecodeJsonWithNil
   __xDecodeJsonWith _ _ _ _ _ = report {}
 
 instance __xDecodeJsonWithCons
-  :: ( Cons field value row' row
+  :: ( Bind f
+     , Cons field value row' row
      , Cons field decoderValue decoderRow' decoderRow
-     , XDecodeCases f decoderList row a
-     , XDecodeCases f decoderList' row' a
-     , XDecodeJsonWith_ f decoderList' decoderRow' list' row' a
      , IsSymbol field
      , Lacks field row'
      , Lacks field decoderRow'
-     , Monad f
      , RowToList row list
      , RowToList row' list'
      , RowToList decoderRow decoderList
      , RowToList decoderRow' decoderList'
      , Status f
      , TypeEquals decoderValue (Json -> a -> f value)
+     , XDecodeCases f decoderList row a
+     , XDecodeCases f decoderList' row' a
+     , XDecodeJsonWith_ f decoderList' decoderRow' list' row' a
      )
   => XDecodeJsonWith_
        f
@@ -104,11 +94,17 @@ instance __xDecodeJsonWithCons
       decoder :: Json -> a -> f value
       decoder = to $ get sProxy decoderRecord
 
+      -- To prevent unnecessary creation of intermediate decoder records,
+      -- coercion is used rather than calling `Record.delete sProxy` to
+      -- induce the next expected type.
+      decoderRecord' :: Record decoderRow'
+      decoderRecord' = unsafeCoerce decoderRecord
+
     rest <-
       __xDecodeJsonWith
         (RLProxy :: RLProxy list')
         (RLProxy :: RLProxy decoderList')
-        (delete sProxy decoderRecord)
+        decoderRecord'
         object
         x
 
@@ -121,15 +117,15 @@ instance __xDecodeJsonWithCons
 
 xDecodeJsonWith
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . XDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
+   . Bind f
   => GDecodeJson row1 list1
-  => Monad f
   => Nub row2 row2
   => RowToList row1 list1
   => RowToList row2 list2
   => RowToList decoderRow decoderList
   => Status f
   => Union row0 row1 row2
+  => XDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
   => Record decoderRow
   -> Json
   -> f (Record row2)
@@ -149,14 +145,14 @@ xDecodeJsonWith decoderRecord = reportJson go
 
 xDecodeJsonWith_
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . XDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
+   . Bind f
   => GDecodeJson row1 list1
-  => Monad f
   => RowToList row1 list1
   => RowToList row2 list2
   => RowToList decoderRow decoderList
   => Status f
   => Union row0 row1 row2
+  => XDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
   => Record decoderRow
   -> Json
   -> f (Record row2)
@@ -173,5 +169,3 @@ xDecodeJsonWith_ decoderRecord = reportJson go
         object
         record1
     report $ union record0 record1
-
--- | -------------------------------------------------------------------------

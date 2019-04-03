@@ -15,18 +15,21 @@ import Data.Traversable (traverse)
 import Prelude
 import Data.Argonaut.Core
 import Data.Argonaut.Decode
-import Data.Argonaut.Encode
-import Data.Either
-import Data.Maybe
-import Data.Status.Class (class Status, report, reportError)
-import Type.Proxy
-import Type.Row (type (+), RProxy(RProxy))
 import Data.Argonaut.Decode.Flex
 import Data.Argonaut.Decode.Flex.Builder
 import Data.Argonaut.Decode.Standard
 import Data.Argonaut.Decode.Standard.Builder
 import Data.Argonaut.Decode.X
+import Data.Argonaut.Decode.XFlex
 import Data.Argonaut.Decode.X.Builder
+import Data.Argonaut.Decode.XFlex.Builder
+import Data.Argonaut.Encode
+import Data.Either
+import Data.Maybe
+import Data.Status.Class (class Status, report, reportError)
+import Data.Tuple (Tuple(Tuple))
+import Type.Proxy
+import Type.Row (type (+), RProxy(RProxy))
 import Prim.RowList as PrimRL
 
 type TypeRep_0   = ( a0 :: Int, a1 :: Int )
@@ -574,6 +577,14 @@ _mh2_ =
     }
     json2
 
+-- type Type_2 =
+--   { a0 :: Int
+--   , a1 :: Int
+--   , a2 :: Maybe Int
+--   , a3 :: Maybe String
+--   , a4 :: Maybe Boolean
+--   }
+
 zz :: Result Type_2
 zz =
   xDecodeJsonWith
@@ -610,6 +621,26 @@ zz1_2__ =
   where
   isEven :: Int -> Boolean
   isEven i = (i `mod` 2) == 0
+
+-- type Type_2 =
+--   { a0 :: Int
+--   , a1 :: Int
+--   , a2 :: Maybe Int
+--   , a3 :: Maybe String
+--   , a4 :: Maybe Boolean
+--   }
+
+zzz :: Result Type_2
+zzz =
+  xFlexDecodeJsonWithBoth
+    { a0: \json rest -> Right 100
+    , a1: \json rest -> Right 101
+    }
+    { a2: \json (Tuple x0 x1) -> Right $ Just 102
+    , a3: \json (Tuple x0 x1) -> Right $ Just "bye"
+    , a4: \json (Tuple x0 x1) -> Right $ Just false
+    }
+    json2
 
 instance functorMaybe_ :: Functor Maybe' where
   map fn (Maybe' (Just x)) = Maybe' $ Just (fn x)

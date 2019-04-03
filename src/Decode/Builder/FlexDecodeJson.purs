@@ -3,7 +3,6 @@
 -- maybe the heterogenous library pertains to this; is this redundant?
 -- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
 -- the others can be based on the general case
--- try downgrading Monad to Bind
 -- `unsafeCoerce` is used b/c at this point every Builder's src is {}.
 -- Use of `unsafeCoerce` is unsightly, of course,
 -- so try to generalize the type signature or introduce a bind-like
@@ -70,12 +69,12 @@ instance builderFlexGDecodeJsonNil
 
 instance builderFlexGDecodeJsonCons
   :: ( Alternative f
+     , Bind g
+     , BuilderFlexGDecodeJson g rowTail tail
      , Cons field (f value) rowTail row
      , DecodeJson value
-     , BuilderFlexGDecodeJson g rowTail tail
      , IsSymbol field
      , Lacks field rowTail
-     , Monad g
      , Status g
      )
   => BuilderFlexGDecodeJson g row (Cons field (f value) tail) where
@@ -90,6 +89,13 @@ instance builderFlexGDecodeJsonCons
           Right val -> report $ Builder.insert sProxy (pure val) <<< rest
       Nothing ->
         report $ Builder.insert sProxy empty <<< rest
+
+
+-- Compare 'FlexDecodeJson':
+-- ```
+-- class FlexDecodeJson f a where
+--  flexDecodeJson' :: Json -> f a
+-- ```
 
 class
   ( RowToList r0 l0
@@ -110,20 +116,18 @@ class
 
 instance builderFlexDecodeJsonBuilder
   :: ( BuilderFlexGDecodeJson f row list
-     , Monad f
      , RowToList row list
      , Status f
      )
   => BuilderFlexDecodeJson f () Nil row list where
   builderFlexDecodeJson' _ _ =
-    reportBuilderJson
-      (flip builderFlexGDecodeJson (RLProxy :: RLProxy list))
+    reportBuilderJson $ flip builderFlexGDecodeJson (RLProxy :: RLProxy list)
 
 builderFlexDecodeJson
   :: forall f list0 list1 list2 row0 row1 row2
-   . BuilderFlexGDecodeJson f row0 list0
+   . Bind f
+  => BuilderFlexGDecodeJson f row0 list0
   => GDecodeJson row1 list1
-  => Monad f
   => Nub row2 row2
   => RowToList row0 list0
   => RowToList row1 list1
@@ -142,9 +146,9 @@ builderFlexDecodeJson _ = reportBuilderJson go
 
 builderFlexDecodeJson_
   :: forall f list0 list1 list2 row0 row1 row2
-   . BuilderFlexGDecodeJson f row0 list0
+   . Bind f
+  => BuilderFlexGDecodeJson f row0 list0
   => GDecodeJson row1 list1
-  => Monad f
   => RowToList row0 list0
   => RowToList row1 list1
   => RowToList row2 list2
@@ -181,15 +185,15 @@ instance __builderFlexDecodeJsonWithNil
 
 instance __builderFlexDecodeJsonWithCons
   :: ( Alternative f
+     , Bind g
+     , BuilderFlexDecodeJsonWith_ g decoderList' decoderRow' list' row'
      , Cons field (f value) row' row
      , Cons field decoderValue decoderRow' decoderRow
      , FlexDecodeCases g decoderList row
      , FlexDecodeCases g decoderList' row'
-     , BuilderFlexDecodeJsonWith_ g decoderList' decoderRow' list' row'
      , IsSymbol field
      , Lacks field row'
      , Lacks field decoderRow'
-     , Monad g
      , RowToList row list
      , RowToList row' list'
      , RowToList decoderRow decoderList
@@ -215,11 +219,17 @@ instance __builderFlexDecodeJsonWithCons
       decoder :: Json -> g (f value)
       decoder = to $ get sProxy decoderRecord
 
+      -- To prevent unnecessary creation of intermediate decoder records,
+      -- coercion is used rather than calling `Record.delete sProxy` to
+      -- induce the next expected type.
+      decoderRecord' :: Record decoderRow'
+      decoderRecord' = unsafeCoerce decoderRecord
+
     rest <-
       __builderFlexDecodeJsonWith
         (RLProxy :: RLProxy list')
         (RLProxy :: RLProxy decoderList')
-        (delete sProxy decoderRecord)
+        decoderRecord'
         object
 
     case lookup fieldName object of
@@ -245,8 +255,8 @@ class
       -> f (Builder {} (Record r0))
 
 instance builderFlexDecodeJsonWithDecodeJsonWith_
-  :: ( FlexDecodeCases f l1 r0
-     , BuilderFlexDecodeJsonWith_ f l1 r1 l0 r0
+  :: ( BuilderFlexDecodeJsonWith_ f l1 r1 l0 r0
+     , FlexDecodeCases f l1 r0
      , RowToList r0 l0
      , RowToList r1 l1
      , Status f
@@ -262,9 +272,9 @@ instance builderFlexDecodeJsonWithDecodeJsonWith_
 
 builderFlexDecodeJsonWith
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . BuilderFlexDecodeJsonWith_ f decoderList decoderRow list0 row0
+   . Bind f
+  => BuilderFlexDecodeJsonWith_ f decoderList decoderRow list0 row0
   => GDecodeJson row1 list1
-  => Monad f
   => Nub row2 row2
   => RowToList row1 list1
   => RowToList decoderRow decoderList
@@ -274,10 +284,10 @@ builderFlexDecodeJsonWith
   => Record decoderRow
   -> Json
   -> f (Builder {} (Record row2))
-builderFlexDecodeJsonWith decoderRecord = reportBuilderJson $ go decoderRecord
+builderFlexDecodeJsonWith decoderRecord = reportBuilderJson $ go
   where
-  go :: Record decoderRow -> Object Json -> f (Builder {} (Record row2))
-  go decoderRecord object = do
+  go :: Object Json -> f (Builder {} (Record row2))
+  go object = do
     builder0 <-
       __builderFlexDecodeJsonWith
         (RLProxy :: RLProxy list0)
@@ -289,9 +299,9 @@ builderFlexDecodeJsonWith decoderRecord = reportBuilderJson $ go decoderRecord
 
 builderFlexDecodeJsonWith_
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . BuilderFlexDecodeJsonWith_ f decoderList decoderRow list0 row0
+   . Bind f
+  => BuilderFlexDecodeJsonWith_ f decoderList decoderRow list0 row0
   => GDecodeJson row1 list1
-  => Monad f
   => RowToList row1 list1
   => RowToList decoderRow decoderList
   => RowToList row2 list2
@@ -300,10 +310,10 @@ builderFlexDecodeJsonWith_
   => Record decoderRow
   -> Json
   -> f (Builder {} (Record row2))
-builderFlexDecodeJsonWith_ decoderRecord = reportBuilderJson $ go decoderRecord
+builderFlexDecodeJsonWith_ decoderRecord = reportBuilderJson $ go
   where
-  go :: Record decoderRow -> Object Json -> f (Builder {} (Record row2))
-  go decoderRecord object = do
+  go :: Object Json -> f (Builder {} (Record row2))
+  go object = do
     builder0 <-
       __builderFlexDecodeJsonWith
         (RLProxy :: RLProxy list0)
@@ -328,10 +338,10 @@ builderFlexDecodeJsonWithBoth
        row1
        row2
        row3
-   . BuilderDecodeJsonWith_ f decoderList0 decoderRow0 list0 row0
+   . Bind f
+  => BuilderDecodeJsonWith_ f decoderList0 decoderRow0 list0 row0
   => BuilderFlexDecodeJsonWith_ f decoderList1 decoderRow1 list1 row1
   => GDecodeJson row2 list2
-  => Monad f
   => Nub intermediateRow intermediateRow
   => Nub row3 row3
   => RowToList decoderRow0 decoderList0
@@ -350,7 +360,7 @@ builderFlexDecodeJsonWithBoth decoderRecord0 decoderRecord1 = reportBuilderJson 
   where
   go :: Object Json -> f (Builder {} (Record row3))
   go object = do
-    (builder0 :: Builder {} (Record row0)) <-
+    builder0 <-
       __builderDecodeJsonWith
         (RLProxy :: RLProxy list0)
         (RLProxy :: RLProxy decoderList0)
@@ -383,10 +393,10 @@ builderFlexDecodeJsonWithBoth_
        row1
        row2
        row3
-   . BuilderDecodeJsonWith_ f decoderList0 decoderRow0 list0 row0
+   . Bind f
+  => BuilderDecodeJsonWith_ f decoderList0 decoderRow0 list0 row0
   => BuilderFlexDecodeJsonWith_ f decoderList1 decoderRow1 list1 row1
   => GDecodeJson row2 list2
-  => Monad f
   => RowToList decoderRow0 decoderList0
   => RowToList decoderRow1 decoderList1
   => RowToList row0 list0

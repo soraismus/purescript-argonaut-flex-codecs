@@ -45,8 +45,8 @@ class XDecodeCases
 
 instance xDecodeCasesCons
   :: ( Cons field value row' row
-     , XDecodeCases f list' row' a
      , TypeEquals decoderValue (Json -> a -> f value)
+     , XDecodeCases f list' row' a
      )
   => XDecodeCases f (Cons field decoderValue list') row a
 

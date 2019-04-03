@@ -3,7 +3,6 @@
 -- maybe the heterogenous library pertains to this; is this redundant?
 -- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
 -- the others can be based on the general case
--- try downgrading Monad to Bind
 -- `unsafeCoerce` is used b/c at this point every Builder's src is {}.
 -- Use of `unsafeCoerce` is unsightly, of course,
 -- so try to generalize the type signature or introduce a bind-like
@@ -69,15 +68,15 @@ instance __builderDecodeJsonWithNil
   __builderDecodeJsonWith _ _ _ _ = report identity
 
 instance __builderDecodeJsonWithCons
-  :: ( Cons field value row' row
+  :: ( Bind f
+     , BuilderDecodeJsonWith_ f decoderList' decoderRow' list' row'
+     , Cons field value row' row
      , Cons field decoderValue decoderRow' decoderRow
      , DecodeCases f decoderList row
      , DecodeCases f decoderList' row'
-     , BuilderDecodeJsonWith_ f decoderList' decoderRow' list' row'
      , IsSymbol field
      , Lacks field row'
      , Lacks field decoderRow'
-     , Monad f
      , RowToList row list
      , RowToList row' list'
      , RowToList decoderRow decoderList
@@ -103,11 +102,17 @@ instance __builderDecodeJsonWithCons
       decoder :: Json -> f value
       decoder = to $ get sProxy decoderRecord
 
+      -- To prevent unnecessary creation of intermediate decoder records,
+      -- coercion is used rather than calling `Record.delete sProxy` to
+      -- induce the next expected type.
+      decoderRecord' :: Record decoderRow'
+      decoderRecord' = unsafeCoerce decoderRecord
+
     rest <-
       __builderDecodeJsonWith
         (RLProxy :: RLProxy list')
         (RLProxy :: RLProxy decoderList')
-        (delete sProxy decoderRecord)
+        decoderRecord'
         object
 
     case lookup fieldName object of
@@ -133,8 +138,8 @@ class
       -> f (Builder {} (Record r0))
 
 instance builderDecodeJsonWithDecodeJsonWith_
-  :: ( DecodeCases f l1 r0
-     , BuilderDecodeJsonWith_ f l1 r1 l0 r0
+  :: ( BuilderDecodeJsonWith_ f l1 r1 l0 r0
+     , DecodeCases f l1 r0
      , RowToList r0 l0
      , RowToList r1 l1
      , Status f
@@ -150,9 +155,9 @@ instance builderDecodeJsonWithDecodeJsonWith_
 
 builderDecodeJsonWith
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . BuilderDecodeJsonWith_ f decoderList decoderRow list0 row0
+   . Bind f
+  => BuilderDecodeJsonWith_ f decoderList decoderRow list0 row0
   => GDecodeJson row1 list1
-  => Monad f
   => Nub row2 row2
   => RowToList row1 list1
   => RowToList row2 list2
@@ -177,9 +182,9 @@ builderDecodeJsonWith decoderRecord = reportBuilderJson go
 
 builderDecodeJsonWith_
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . BuilderDecodeJsonWith_ f decoderList decoderRow list0 row0
+   . Bind f
+  => BuilderDecodeJsonWith_ f decoderList decoderRow list0 row0
   => GDecodeJson row1 list1
-  => Monad f
   => RowToList row1 list1
   => RowToList row2 list2
   => RowToList decoderRow decoderList

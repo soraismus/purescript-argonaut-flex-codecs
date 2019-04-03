@@ -1,3 +1,4 @@
+-- Should explicit kind-signatures be removed, if possible?
 module Data.Argonaut.Decode.Cases.XFlex where
 
 import Prelude
@@ -44,10 +45,10 @@ class XFlexDecodeCases
   | list -> row
 
 instance xFlexDecodeCasesCons
-  :: ( Cons field value row' row
-     , XFlexDecodeCases f list' row' a
+  :: ( Cons field (f value) row' row
      , TypeEquals decoderValue (Json -> a -> g (f value))
+     , XFlexDecodeCases g list' row' a
      )
-  => XFlexDecodeCases f (Cons field decoderValue list') row a
+  => XFlexDecodeCases g (Cons field decoderValue list') row a
 
 instance xFlexDecodeCasesNil :: XFlexDecodeCases f Nil () a

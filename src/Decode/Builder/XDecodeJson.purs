@@ -3,7 +3,6 @@
 -- maybe the heterogenous library pertains to this; is this redundant?
 -- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
 -- the others can be based on the general case
--- try downgrading Monad to Bind
 -- `unsafeCoerce` is used b/c at this point every Builder's src is {}.
 -- Use of `unsafeCoerce` is unsightly, of course,
 -- so try to generalize the type signature or introduce a bind-like
@@ -71,21 +70,21 @@ instance __builderXDecodeJsonWithNil
   __builderXDecodeJsonWith _ _ _ _ _ = report identity
 
 instance __builderXDecodeJsonWithCons
-  :: ( Cons field value row' row
-     , Cons field decoderValue decoderRow' decoderRow
-     , XDecodeCases f decoderList row a
-     , XDecodeCases f decoderList' row' a
+  :: ( Bind f
      , BuilderXDecodeJsonWith_ f decoderList' decoderRow' list' row' a
+     , Cons field value row' row
+     , Cons field decoderValue decoderRow' decoderRow
      , IsSymbol field
      , Lacks field row'
      , Lacks field decoderRow'
-     , Monad f
      , RowToList row list
      , RowToList row' list'
      , RowToList decoderRow decoderList
      , RowToList decoderRow' decoderList'
      , Status f
      , TypeEquals decoderValue (Json -> a -> f value)
+     , XDecodeCases f decoderList row a
+     , XDecodeCases f decoderList' row' a
      )
   => BuilderXDecodeJsonWith_
        f
@@ -106,11 +105,17 @@ instance __builderXDecodeJsonWithCons
       decoder :: Json -> a -> f value
       decoder = to $ get sProxy decoderRecord
 
+      -- To prevent unnecessary creation of intermediate decoder records,
+      -- coercion is used rather than calling `Record.delete sProxy` to
+      -- induce the next expected type.
+      decoderRecord' :: Record decoderRow'
+      decoderRecord' = unsafeCoerce decoderRecord
+
     rest <-
       __builderXDecodeJsonWith
         (RLProxy :: RLProxy list')
         (RLProxy :: RLProxy decoderList')
-        (delete sProxy decoderRecord)
+        decoderRecord'
         object
         x
 
@@ -123,9 +128,9 @@ instance __builderXDecodeJsonWithCons
 
 builderXDecodeJsonWith
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . BuilderXDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
+   . Bind f
+  => BuilderXDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
   => GDecodeJson row1 list1
-  => Monad f
   => Nub row2 row2
   => RowToList row1 list1
   => RowToList row2 list2
@@ -151,9 +156,9 @@ builderXDecodeJsonWith decoderRecord = reportBuilderJson go
 
 builderXDecodeJsonWith_
   :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
-   . BuilderXDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
+   . Bind f
+  => BuilderXDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
   => GDecodeJson row1 list1
-  => Monad f
   => RowToList row1 list1
   => RowToList row2 list2
   => RowToList decoderRow decoderList
