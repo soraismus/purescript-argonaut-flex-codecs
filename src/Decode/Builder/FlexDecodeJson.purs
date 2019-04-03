@@ -44,13 +44,13 @@ import Unsafe.Coerce (unsafeCoerce)
 
 class BuilderFlexGDecodeJson
   f
-  (row :: # Type)
-  (list :: RowList)
-  | list -> row where
+  (r :: # Type)
+  (l :: RowList)
+  | l -> r where
   builderFlexGDecodeJson
     :: Object Json
-    -> RLProxy list
-    -> f (Builder {} (Record row))
+    -> RLProxy l
+    -> f (Builder {} (Record r))
 
 instance builderFlexGDecodeJsonNil
   :: Status f
@@ -60,18 +60,18 @@ instance builderFlexGDecodeJsonNil
 instance builderFlexGDecodeJsonCons
   :: ( Alternative f
      , Bind g
-     , BuilderFlexGDecodeJson g rowTail tail
-     , Cons field (f value) rowTail row
-     , DecodeJson value
-     , IsSymbol field
-     , Lacks field rowTail
+     , BuilderFlexGDecodeJson g r' l'
+     , Cons s (f v) r' r
+     , DecodeJson v
+     , IsSymbol s
+     , Lacks s r'
      , Status g
      )
-  => BuilderFlexGDecodeJson g row (Cons field (f value) tail) where
+  => BuilderFlexGDecodeJson g r (Cons s (f v) l') where
   builderFlexGDecodeJson object _ = do
-    let sProxy = SProxy :: SProxy field
+    let sProxy = SProxy :: SProxy s
     let fieldName = reflectSymbol sProxy
-    rest <- builderFlexGDecodeJson object (RLProxy :: RLProxy tail)
+    rest <- builderFlexGDecodeJson object (RLProxy :: RLProxy l')
     case lookup fieldName object of
       Just jsonVal ->
         case decodeJson jsonVal of
@@ -105,53 +105,53 @@ class
       -> f (Builder (Record r0) (Record r1))
 
 instance builderFlexDecodeJsonBuilder
-  :: ( BuilderFlexGDecodeJson f row list
-     , RowToList row list
+  :: ( BuilderFlexGDecodeJson f r l
+     , RowToList r l
      , Status f
      )
-  => BuilderFlexDecodeJson f () Nil row list where
+  => BuilderFlexDecodeJson f () Nil r l where
   builderFlexDecodeJson' _ _ =
-    reportBuilderJson $ flip builderFlexGDecodeJson (RLProxy :: RLProxy list)
+    reportBuilderJson $ flip builderFlexGDecodeJson (RLProxy :: RLProxy l)
 
 builderFlexDecodeJson
-  :: forall f list0 list1 list2 row0 row1 row2
+  :: forall f l0 l1 l2 r0 r1 r2
    . Bind f
-  => BuilderFlexGDecodeJson f row0 list0
-  => GDecodeJson row1 list1
-  => Nub row2 row2
-  => RowToList row0 list0
-  => RowToList row1 list1
-  => RowToList row2 list2
+  => BuilderFlexGDecodeJson f r0 l0
+  => GDecodeJson r1 l1
+  => Nub r2 r2
+  => RowToList r0 l0
+  => RowToList r1 l1
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 row2
-  => RProxy row0
+  => Union r0 r1 r2
+  => RProxy r0
   -> Json
-  -> f (Builder {} (Record row2))
+  -> f (Builder {} (Record r2))
 builderFlexDecodeJson _ = reportBuilderJson go
   where
   go object = do
-    builder0 <- builderFlexGDecodeJson object (RLProxy :: RLProxy list0)
-    record1 <- reportObject object (RLProxy :: RLProxy list1)
+    builder0 <- builderFlexGDecodeJson object (RLProxy :: RLProxy l0)
+    record1 <- reportObject object (RLProxy :: RLProxy l1)
     report $ (Builder.merge record1) <<< builder0
 
 builderFlexDecodeJson_
-  :: forall f list0 list1 list2 row0 row1 row2
+  :: forall f l0 l1 l2 r0 r1 r2
    . Bind f
-  => BuilderFlexGDecodeJson f row0 list0
-  => GDecodeJson row1 list1
-  => RowToList row0 list0
-  => RowToList row1 list1
-  => RowToList row2 list2
+  => BuilderFlexGDecodeJson f r0 l0
+  => GDecodeJson r1 l1
+  => RowToList r0 l0
+  => RowToList r1 l1
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 row2
-  => RProxy row0
+  => Union r0 r1 r2
+  => RProxy r0
   -> Json
-  -> f (Builder {} (Record row2))
+  -> f (Builder {} (Record r2))
 builderFlexDecodeJson_ _ = reportBuilderJson go
   where
   go object = do
-    builder0 <- builderFlexGDecodeJson object (RLProxy :: RLProxy list0)
-    record1 <- reportObject object (RLProxy :: RLProxy list1)
+    builder0 <- builderFlexGDecodeJson object (RLProxy :: RLProxy l0)
+    record1 <- reportObject object (RLProxy :: RLProxy l1)
     report $ (Builder.union record1) <<< builder0
 
 class BuilderFlexDecodeJsonWith_
@@ -176,49 +176,44 @@ instance __builderFlexDecodeJsonWithNil
 instance __builderFlexDecodeJsonWithCons
   :: ( Alternative f
      , Bind g
-     , BuilderFlexDecodeJsonWith_ g decoderList' decoderRow' list' row'
-     , Cases g decoderList row
-     , Cases g decoderList' row'
-     , Cons field (f value) row' row
-     , Cons field decoderValue decoderRow' decoderRow
-     , IsSymbol field
-     , Lacks field row'
-     , Lacks field decoderRow'
-     , RowToList row list
-     , RowToList row' list'
-     , RowToList decoderRow decoderList
-     , RowToList decoderRow' decoderList'
+     , BuilderFlexDecodeJsonWith_ g dl' dr' l' r'
+     , Cases g dl r
+     , Cases g dl' r'
+     , Cons s (f v) r' r
+     , Cons s dv dr' dr
+     , IsSymbol s
+     , Lacks s r'
+     , Lacks s dr'
+     , RowToList r l
+     , RowToList r' l'
+     , RowToList dr dl
+     , RowToList dr' dl'
      , Status g
-     , TypeEquals decoderValue (Json -> g (f value))
+     , TypeEquals dv (Json -> g (f v))
      )
-  => BuilderFlexDecodeJsonWith_
-       g
-       (Cons field decoderValue decoderList')
-       decoderRow
-       (Cons field (f value) list')
-       row
+  => BuilderFlexDecodeJsonWith_ g (Cons s dv dl') dr (Cons s (f v) l') r
   where
   __builderFlexDecodeJsonWith _ _ decoderRecord object = do
     let
-      sProxy :: SProxy field
+      sProxy :: SProxy s
       sProxy = SProxy
 
       fieldName :: String
       fieldName = reflectSymbol sProxy
 
-      decoder :: Json -> g (f value)
+      decoder :: Json -> g (f v)
       decoder = to $ get sProxy decoderRecord
 
       -- To prevent unnecessary creation of intermediate decoder records,
       -- coercion is used rather than calling `Record.delete sProxy` to
       -- induce the next expected type.
-      decoderRecord' :: Record decoderRow'
+      decoderRecord' :: Record dr'
       decoderRecord' = unsafeCoerce decoderRecord
 
     rest <-
       __builderFlexDecodeJsonWith
-        (RLProxy :: RLProxy list')
-        (RLProxy :: RLProxy decoderList')
+        (RLProxy :: RLProxy l')
+        (RLProxy :: RLProxy dl')
         decoderRecord'
         object
 
@@ -261,162 +256,136 @@ instance builderFlexDecodeJsonWithDecodeJsonWith_
         decoderRecord
 
 builderFlexDecodeJsonWith
-  :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
+  :: forall dr dl f l0 l1 l2 r0 r1 r2
    . Bind f
-  => BuilderFlexDecodeJsonWith_ f decoderList decoderRow list0 row0
-  => GDecodeJson row1 list1
-  => Nub row2 row2
-  => RowToList row1 list1
-  => RowToList decoderRow decoderList
-  => RowToList row2 list2
+  => BuilderFlexDecodeJsonWith_ f dl dr l0 r0
+  => GDecodeJson r1 l1
+  => Nub r2 r2
+  => RowToList r1 l1
+  => RowToList dr dl
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 row2
-  => Record decoderRow
+  => Union r0 r1 r2
+  => Record dr
   -> Json
-  -> f (Builder {} (Record row2))
+  -> f (Builder {} (Record r2))
 builderFlexDecodeJsonWith decoderRecord = reportBuilderJson $ go
   where
-  go :: Object Json -> f (Builder {} (Record row2))
+  go :: Object Json -> f (Builder {} (Record r2))
   go object = do
     builder0 <-
       __builderFlexDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl)
         decoderRecord
         object
-    record1 <- reportObject object (RLProxy :: RLProxy list1)
+    record1 <- reportObject object (RLProxy :: RLProxy l1)
     report $ (Builder.merge record1) <<< builder0
 
 builderFlexDecodeJsonWith_
-  :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
+  :: forall dr dl f l0 l1 l2 r0 r1 r2
    . Bind f
-  => BuilderFlexDecodeJsonWith_ f decoderList decoderRow list0 row0
-  => GDecodeJson row1 list1
-  => RowToList row1 list1
-  => RowToList decoderRow decoderList
-  => RowToList row2 list2
+  => BuilderFlexDecodeJsonWith_ f dl dr l0 r0
+  => GDecodeJson r1 l1
+  => RowToList r1 l1
+  => RowToList dr dl
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 row2
-  => Record decoderRow
+  => Union r0 r1 r2
+  => Record dr
   -> Json
-  -> f (Builder {} (Record row2))
+  -> f (Builder {} (Record r2))
 builderFlexDecodeJsonWith_ decoderRecord = reportBuilderJson $ go
   where
-  go :: Object Json -> f (Builder {} (Record row2))
+  go :: Object Json -> f (Builder {} (Record r2))
   go object = do
     builder0 <-
       __builderFlexDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl)
         decoderRecord
         object
-    record1 <- reportObject object (RLProxy :: RLProxy list1)
+    record1 <- reportObject object (RLProxy :: RLProxy l1)
     report $ (Builder.union record1) <<< builder0
 
 builderFlexDecodeJsonWithBoth
-  :: forall
-       decoderList0
-       decoderList1
-       decoderRow0
-       decoderRow1
-       f
-       intermediateRow
-       list0
-       list1
-       list2
-       row0
-       row1
-       row2
-       row3
+  :: forall dl0 dl1 dr0 dr1 f ir l0 l1 l2 r0 r1 r2 r3
    . Bind f
-  => BuilderDecodeJsonWith_ f decoderList0 decoderRow0 list0 row0
-  => BuilderFlexDecodeJsonWith_ f decoderList1 decoderRow1 list1 row1
-  => GDecodeJson row2 list2
-  => Nub intermediateRow intermediateRow
-  => Nub row3 row3
-  => RowToList decoderRow0 decoderList0
-  => RowToList decoderRow1 decoderList1
-  => RowToList row0 list0
-  => RowToList row1 list1
-  => RowToList row2 list2
+  => BuilderDecodeJsonWith_ f dl0 dr0 l0 r0
+  => BuilderFlexDecodeJsonWith_ f dl1 dr1 l1 r1
+  => GDecodeJson r2 l2
+  => Nub ir ir
+  => Nub r3 r3
+  => RowToList dr0 dl0
+  => RowToList dr1 dl1
+  => RowToList r0 l0
+  => RowToList r1 l1
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 intermediateRow
-  => Union intermediateRow row2 row3
-  => Record decoderRow0
-  -> Record decoderRow1
+  => Union r0 r1 ir
+  => Union ir r2 r3
+  => Record dr0
+  -> Record dr1
   -> Json
-  -> f (Builder {} (Record row3))
+  -> f (Builder {} (Record r3))
 builderFlexDecodeJsonWithBoth decoderRecord0 decoderRecord1 = reportBuilderJson go
   where
-  go :: Object Json -> f (Builder {} (Record row3))
+  go :: Object Json -> f (Builder {} (Record r3))
   go object = do
     builder0 <-
       __builderDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList0)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl0)
         decoderRecord0
         object
     builder1 <-
       __builderFlexDecodeJsonWith
-        (RLProxy :: RLProxy list1)
-        (RLProxy :: RLProxy decoderList1)
+        (RLProxy :: RLProxy l1)
+        (RLProxy :: RLProxy dl1)
         decoderRecord1
         object
     let
-      builder1' :: Builder (Record row0) (Record intermediateRow)
+      builder1' :: Builder (Record r0) (Record ir)
       builder1' = unsafeCoerce builder1
-    record2 <- reportObject object (RLProxy :: RLProxy list2)
+    record2 <- reportObject object (RLProxy :: RLProxy l2)
     report $ (Builder.merge record2) <<< builder1' <<< builder0
 
 builderFlexDecodeJsonWithBoth_
-  :: forall
-       decoderList0
-       decoderList1
-       decoderRow0
-       decoderRow1
-       f
-       intermediateRow
-       list0
-       list1
-       list2
-       row0
-       row1
-       row2
-       row3
+  :: forall dl0 dl1 dr0 dr1 f ir l0 l1 l2 r0 r1 r2 r3
    . Bind f
-  => BuilderDecodeJsonWith_ f decoderList0 decoderRow0 list0 row0
-  => BuilderFlexDecodeJsonWith_ f decoderList1 decoderRow1 list1 row1
-  => GDecodeJson row2 list2
-  => RowToList decoderRow0 decoderList0
-  => RowToList decoderRow1 decoderList1
-  => RowToList row0 list0
-  => RowToList row1 list1
-  => RowToList row2 list2
+  => BuilderDecodeJsonWith_ f dl0 dr0 l0 r0
+  => BuilderFlexDecodeJsonWith_ f dl1 dr1 l1 r1
+  => GDecodeJson r2 l2
+  => RowToList dr0 dl0
+  => RowToList dr1 dl1
+  => RowToList r0 l0
+  => RowToList r1 l1
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 intermediateRow
-  => Union intermediateRow row2 row3
-  => Record decoderRow0
-  -> Record decoderRow1
+  => Union r0 r1 ir
+  => Union ir r2 r3
+  => Record dr0
+  -> Record dr1
   -> Json
-  -> f (Builder {} (Record row3))
+  -> f (Builder {} (Record r3))
 builderFlexDecodeJsonWithBoth_ decoderRecord0 decoderRecord1 = reportBuilderJson go
   where
-  go :: Object Json -> f (Builder {} (Record row3))
+  go :: Object Json -> f (Builder {} (Record r3))
   go object = do
-    (builder0 :: Builder {} (Record row0)) <-
+    (builder0 :: Builder {} (Record r0)) <-
       __builderDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList0)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl0)
         decoderRecord0
         object
     builder1 <-
       __builderFlexDecodeJsonWith
-        (RLProxy :: RLProxy list1)
-        (RLProxy :: RLProxy decoderList1)
+        (RLProxy :: RLProxy l1)
+        (RLProxy :: RLProxy dl1)
         decoderRecord1
         object
     let
-      builder1' :: Builder (Record row0) (Record intermediateRow)
+      builder1' :: Builder (Record r0) (Record ir)
       builder1' = unsafeCoerce builder1
-    record2 <- reportObject object (RLProxy :: RLProxy list2)
+    record2 <- reportObject object (RLProxy :: RLProxy l2)
     report $ (Builder.union record2) <<< builder1' <<< builder0

@@ -62,50 +62,44 @@ instance __xFlexDecodeJsonWithNil
 instance __xFlexDecodeJsonWithCons
   :: ( Alternative f
      , Bind g
-     , Cases1 g decoderList row a
-     , Cases1 g decoderList' row' a
-     , Cons field (f value) row' row
-     , Cons field decoderValue decoderRow' decoderRow
-     , IsSymbol field
-     , Lacks field row'
-     , Lacks field decoderRow'
-     , RowToList row list
-     , RowToList row' list'
-     , RowToList decoderRow decoderList
-     , RowToList decoderRow' decoderList'
+     , Cases1 g dl r a
+     , Cases1 g dl' r' a
+     , Cons s (f v) r' r
+     , Cons s dv dr' dr
+     , IsSymbol s
+     , Lacks s r'
+     , Lacks s dr'
+     , RowToList r l
+     , RowToList r' l'
+     , RowToList dr dl
+     , RowToList dr' dl'
      , Status g
-     , TypeEquals decoderValue (Json -> a -> g (f value))
-     , XFlexDecodeJsonWith_ g decoderList' decoderRow' list' row' a
+     , TypeEquals dv (Json -> a -> g (f v))
+     , XFlexDecodeJsonWith_ g dl' dr' l' r' a
      )
-  => XFlexDecodeJsonWith_
-       g
-       (Cons field decoderValue decoderList')
-       decoderRow
-       (Cons field (f value) list')
-       row
-       a
+  => XFlexDecodeJsonWith_ g (Cons s dv dl') dr (Cons s (f v) l') r a
   where
   __xFlexDecodeJsonWith _ _ decoderRecord object x = do
     let
-      sProxy :: SProxy field
+      sProxy :: SProxy s
       sProxy = SProxy
 
       fieldName :: String
       fieldName = reflectSymbol sProxy
 
-      decoder :: Json -> a -> g (f value)
+      decoder :: Json -> a -> g (f v)
       decoder = to $ get sProxy decoderRecord
 
       -- To prevent unnecessary creation of intermediate decoder records,
       -- coercion is used rather than calling `Record.delete sProxy` to
       -- induce the next expected type.
-      decoderRecord' :: Record decoderRow'
+      decoderRecord' :: Record dr'
       decoderRecord' = unsafeCoerce decoderRecord
 
     rest <-
       __xFlexDecodeJsonWith
-        (RLProxy :: RLProxy list')
-        (RLProxy :: RLProxy decoderList')
+        (RLProxy :: RLProxy l')
+        (RLProxy :: RLProxy dl')
         decoderRecord'
         object
         x
@@ -118,185 +112,135 @@ instance __xFlexDecodeJsonWithCons
         reportError $ getMissingFieldErrorMessage fieldName
 
 xFlexDecodeJsonWith
-  :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
+  :: forall dr dl f l0 l1 l2 r0 r1 r2
    . Bind f
-  => GDecodeJson row1 list1
-  => Nub row2 row2
-  => RowToList row1 list1
-  => RowToList row2 list2
-  => RowToList decoderRow decoderList
+  => GDecodeJson r1 l1
+  => Nub r2 r2
+  => RowToList r1 l1
+  => RowToList r2 l2
+  => RowToList dr dl
   => Status f
-  => Union row0 row1 row2
-  => XFlexDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
-  => Record decoderRow
+  => Union r0 r1 r2
+  => XFlexDecodeJsonWith_ f dl dr l0 r0 (Record r1)
+  => Record dr
   -> Json
-  -> f (Record row2)
+  -> f (Record r2)
 xFlexDecodeJsonWith decoderRecord = reportJson go
   where
-  go :: Object Json -> f (Record row2)
+  go :: Object Json -> f (Record r2)
   go object = do
-    record1 <- reportObject object (RLProxy :: RLProxy list1)
+    record1 <- reportObject object (RLProxy :: RLProxy l1)
     record0 <-
       __xFlexDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl)
         decoderRecord
         object
         record1
     report $ merge record0 record1
 
 xFlexDecodeJsonWith_
-  :: forall decoderRow decoderList f list0 list1 list2 row0 row1 row2
+  :: forall dr dl f l0 l1 l2 r0 r1 r2
    . Bind f
-  => GDecodeJson row1 list1
-  => RowToList row1 list1
-  => RowToList row2 list2
-  => RowToList decoderRow decoderList
+  => GDecodeJson r1 l1
+  => RowToList r1 l1
+  => RowToList r2 l2
+  => RowToList dr dl
   => Status f
-  => Union row0 row1 row2
-  => XFlexDecodeJsonWith_ f decoderList decoderRow list0 row0 (Record row1)
-  => Record decoderRow
+  => Union r0 r1 r2
+  => XFlexDecodeJsonWith_ f dl dr l0 r0 (Record r1)
+  => Record dr
   -> Json
-  -> f (Record row2)
+  -> f (Record r2)
 xFlexDecodeJsonWith_ decoderRecord = reportJson go
   where
-  go :: Object Json -> f (Record row2)
+  go :: Object Json -> f (Record r2)
   go object = do
-    record1 <- reportObject object (RLProxy :: RLProxy list1)
+    record1 <- reportObject object (RLProxy :: RLProxy l1)
     record0 <-
       __xFlexDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl)
         decoderRecord
         object
         record1
     report $ union record0 record1
 
 xFlexDecodeJsonWithBoth
-  :: forall
-       decoderList0
-       decoderList1
-       decoderRow0
-       decoderRow1
-       f
-       intermediateRow
-       list0
-       list1
-       list2
-       row0
-       row1
-       row2
-       row3
+  :: forall dl0 dl1 dr0 dr1 f ir l0 l1 l2 r0 r1 r2 r3
    . Bind f
-  => GDecodeJson row2 list2
-  => Nub intermediateRow intermediateRow
-  => Nub row3 row3
-  => RowToList decoderRow0 decoderList0
-  => RowToList decoderRow1 decoderList1
-  => RowToList row0 list0
-  => RowToList row1 list1
-  => RowToList row2 list2
+  => GDecodeJson r2 l2
+  => Nub ir ir
+  => Nub r3 r3
+  => RowToList dr0 dl0
+  => RowToList dr1 dl1
+  => RowToList r0 l0
+  => RowToList r1 l1
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 intermediateRow
-  => Union intermediateRow row2 row3
-  => XDecodeJsonWith_
-       f
-       decoderList0
-       decoderRow0
-       list0
-       row0
-       (Record row2)
-  => XFlexDecodeJsonWith_
-       f
-       decoderList1
-       decoderRow1
-       list1
-       row1
-       (Tuple (Record row2) (Record row0))
-  => Record decoderRow0
-  -> Record decoderRow1
+  => Union r0 r1 ir
+  => Union ir r2 r3
+  => XDecodeJsonWith_ f dl0 dr0 l0 r0 (Record r2)
+  => XFlexDecodeJsonWith_ f dl1 dr1 l1 r1 (Tuple (Record r2) (Record r0))
+  => Record dr0
+  -> Record dr1
   -> Json
-  -> f (Record row3)
+  -> f (Record r3)
 xFlexDecodeJsonWithBoth decoderRecord0 decoderRecord1 = reportJson go
   where
-  go :: Object Json -> f (Record row3)
+  go :: Object Json -> f (Record r3)
   go object = do
-    record2 <- reportObject object (RLProxy :: RLProxy list2)
+    record2 <- reportObject object (RLProxy :: RLProxy l2)
     record0 <-
       __xDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList0)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl0)
         decoderRecord0
         object
         record2
     record1 <-
       __xFlexDecodeJsonWith
-        (RLProxy :: RLProxy list1)
-        (RLProxy :: RLProxy decoderList1)
+        (RLProxy :: RLProxy l1)
+        (RLProxy :: RLProxy dl1)
         decoderRecord1
         object
         (Tuple record2 record0)
     report $ record0 `merge` record1 `merge` record2
 
 xFlexDecodeJsonWithBoth_
-  :: forall
-       decoderList0
-       decoderList1
-       decoderRow0
-       decoderRow1
-       f
-       intermediateRow
-       list0
-       list1
-       list2
-       row0
-       row1
-       row2
-       row3
+  :: forall dl0 dl1 dr0 dr1 f ir l0 l1 l2 r0 r1 r2 r3
    . Bind f
-  => GDecodeJson row2 list2
-  => RowToList decoderRow0 decoderList0
-  => RowToList decoderRow1 decoderList1
-  => RowToList row0 list0
-  => RowToList row1 list1
-  => RowToList row2 list2
+  => GDecodeJson r2 l2
+  => RowToList dr0 dl0
+  => RowToList dr1 dl1
+  => RowToList r0 l0
+  => RowToList r1 l1
+  => RowToList r2 l2
   => Status f
-  => Union row0 row1 intermediateRow
-  => Union intermediateRow row2 row3
-  => XDecodeJsonWith_
-       f
-       decoderList0
-       decoderRow0
-       list0
-       row0
-       (Record row2)
-  => XFlexDecodeJsonWith_
-       f
-       decoderList1
-       decoderRow1
-       list1
-       row1
-       (Tuple (Record row2) (Record row0))
-  => Record decoderRow0
-  -> Record decoderRow1
+  => Union r0 r1 ir
+  => Union ir r2 r3
+  => XDecodeJsonWith_ f dl0 dr0 l0 r0 (Record r2)
+  => XFlexDecodeJsonWith_ f dl1 dr1 l1 r1 (Tuple (Record r2) (Record r0))
+  => Record dr0
+  -> Record dr1
   -> Json
-  -> f (Record row3)
+  -> f (Record r3)
 xFlexDecodeJsonWithBoth_ decoderRecord0 decoderRecord1 = reportJson go
   where
-  go :: Object Json -> f (Record row3)
+  go :: Object Json -> f (Record r3)
   go object = do
-    record2 <- reportObject object (RLProxy :: RLProxy list2)
+    record2 <- reportObject object (RLProxy :: RLProxy l2)
     record0 <-
       __xDecodeJsonWith
-        (RLProxy :: RLProxy list0)
-        (RLProxy :: RLProxy decoderList0)
+        (RLProxy :: RLProxy l0)
+        (RLProxy :: RLProxy dl0)
         decoderRecord0
         object
         record2
     record1 <-
       __xFlexDecodeJsonWith
-        (RLProxy :: RLProxy list1)
-        (RLProxy :: RLProxy decoderList1)
+        (RLProxy :: RLProxy l1)
+        (RLProxy :: RLProxy dl1)
         decoderRecord1
         object
         (Tuple record2 record0)
