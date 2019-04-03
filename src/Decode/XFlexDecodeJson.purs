@@ -5,7 +5,7 @@ import Prelude
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, empty)
 import Data.Argonaut.Core (Json, toObject)
-import Data.Argonaut.Decode.Cases.XFlex
+import Data.Argonaut.Decode.Cases1
 import Data.Argonaut.Decode.Class
   ( class DecodeJson
   , class GDecodeJson
@@ -62,6 +62,8 @@ instance __xFlexDecodeJsonWithNil
 instance __xFlexDecodeJsonWithCons
   :: ( Alternative f
      , Bind g
+     , Cases1 g decoderList row a
+     , Cases1 g decoderList' row' a
      , Cons field (f value) row' row
      , Cons field decoderValue decoderRow' decoderRow
      , IsSymbol field
@@ -73,8 +75,6 @@ instance __xFlexDecodeJsonWithCons
      , RowToList decoderRow' decoderList'
      , Status g
      , TypeEquals decoderValue (Json -> a -> g (f value))
-     , XFlexDecodeCases g decoderList row a
-     , XFlexDecodeCases g decoderList' row' a
      , XFlexDecodeJsonWith_ g decoderList' decoderRow' list' row' a
      )
   => XFlexDecodeJsonWith_

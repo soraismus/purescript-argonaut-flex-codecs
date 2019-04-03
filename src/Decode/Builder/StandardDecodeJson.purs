@@ -1,13 +1,3 @@
--- are all instances of DecodeCases/TypeEquals necessary
--- still too many copies of of json/object error message
--- maybe the heterogenous library pertains to this; is this redundant?
--- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
--- the others can be based on the general case
--- `unsafeCoerce` is used b/c at this point every Builder's src is {}.
--- Use of `unsafeCoerce` is unsightly, of course,
--- so try to generalize the type signature or introduce a bind-like
--- function for record mergers.
--- Consider using the more-general Flex-scheme with `Identity` or (-> a)
 module Data.Argonaut.Decode.Standard.Builder where
 
 import Prelude
@@ -15,7 +5,7 @@ import Prelude
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, empty)
 import Data.Argonaut.Core (Json, toObject)
-import Data.Argonaut.Decode.Cases.Standard
+import Data.Argonaut.Decode.Cases
 import Data.Argonaut.Decode.Class
   ( class DecodeJson
   , class GDecodeJson
@@ -70,10 +60,10 @@ instance __builderDecodeJsonWithNil
 instance __builderDecodeJsonWithCons
   :: ( Bind f
      , BuilderDecodeJsonWith_ f decoderList' decoderRow' list' row'
+     , Cases f decoderList row
+     , Cases f decoderList' row'
      , Cons field value row' row
      , Cons field decoderValue decoderRow' decoderRow
-     , DecodeCases f decoderList row
-     , DecodeCases f decoderList' row'
      , IsSymbol field
      , Lacks field row'
      , Lacks field decoderRow'
@@ -123,7 +113,7 @@ instance __builderDecodeJsonWithCons
         reportError $ getMissingFieldErrorMessage fieldName
 
 class
-  ( DecodeCases f l1 r0
+  ( Cases f l1 r0
   , RowToList r1 l1
   ) <=
   BuilderDecodeJsonWith
@@ -139,7 +129,7 @@ class
 
 instance builderDecodeJsonWithDecodeJsonWith_
   :: ( BuilderDecodeJsonWith_ f l1 r1 l0 r0
-     , DecodeCases f l1 r0
+     , Cases f l1 r0
      , RowToList r0 l0
      , RowToList r1 l1
      , Status f

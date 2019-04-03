@@ -1,13 +1,3 @@
--- are all instances of DecodeCases/TypeEquals necessary
--- still too many copies of of json/object error message
--- maybe the heterogenous library pertains to this; is this redundant?
--- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
--- the others can be based on the general case
--- `unsafeCoerce` is used b/c at this point every Builder's src is {}.
--- Use of `unsafeCoerce` is unsightly, of course,
--- so try to generalize the type signature or introduce a bind-like
--- function for record mergers.
--- Consider using the more-general Flex-scheme with `Identity` or (-> a)
 module Data.Argonaut.Decode.Flex.Builder where
 
 import Prelude
@@ -15,7 +5,7 @@ import Prelude
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, empty)
 import Data.Argonaut.Core (Json, toObject)
-import Data.Argonaut.Decode.Cases.Flex
+import Data.Argonaut.Decode.Cases
 import Data.Argonaut.Decode.Standard.Builder
   ( class BuilderDecodeJsonWith_
   , __builderDecodeJsonWith
@@ -187,10 +177,10 @@ instance __builderFlexDecodeJsonWithCons
   :: ( Alternative f
      , Bind g
      , BuilderFlexDecodeJsonWith_ g decoderList' decoderRow' list' row'
+     , Cases g decoderList row
+     , Cases g decoderList' row'
      , Cons field (f value) row' row
      , Cons field decoderValue decoderRow' decoderRow
-     , FlexDecodeCases g decoderList row
-     , FlexDecodeCases g decoderList' row'
      , IsSymbol field
      , Lacks field row'
      , Lacks field decoderRow'
@@ -240,7 +230,7 @@ instance __builderFlexDecodeJsonWithCons
         report $ Builder.insert sProxy empty <<< rest
 
 class
-  ( FlexDecodeCases f l1 r0
+  ( Cases f l1 r0
   , RowToList r1 l1
   ) <=
   BuilderFlexDecodeJsonWith
@@ -256,7 +246,7 @@ class
 
 instance builderFlexDecodeJsonWithDecodeJsonWith_
   :: ( BuilderFlexDecodeJsonWith_ f l1 r1 l0 r0
-     , FlexDecodeCases f l1 r0
+     , Cases f l1 r0
      , RowToList r0 l0
      , RowToList r1 l1
      , Status f

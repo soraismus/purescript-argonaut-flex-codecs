@@ -1,4 +1,4 @@
-module Data.Argonaut.Decode.Cases.Flex where
+module Data.Argonaut.Decode.Cases where
 
 import Prelude
 
@@ -36,17 +36,16 @@ import Type.Row
 import Type.Row as Row
 import Unsafe.Coerce (unsafeCoerce)
 
-class FlexDecodeCases
+class Cases
   (f :: Type -> Type)
-  (list :: RowList)
-  (row :: # Type)
-  | list -> row
+  (l :: RowList)
+  (r :: # Type)
+  | l -> r
 
-instance flexDecodeCasesCons
-  :: ( Cons field (f value) row' row
-     , FlexDecodeCases g list' row'
-     , TypeEquals decoderValue (Json -> g (f value))
+instance casesNil :: Cases f Nil ()
+
+instance casesCons
+  :: ( Cons s v r' r
+     , Cases f l' r'
      )
-  => FlexDecodeCases g (Cons field decoderValue list') row
-
-instance flexDecodeCasesNil :: FlexDecodeCases f Nil ()
+  => Cases f (Cons s tv l') r

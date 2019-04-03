@@ -1,4 +1,3 @@
--- Should Lazy values be used in 'builderXFlexDecodeJsonWithBoth'?
 module Data.Argonaut.Decode.XFlex.Builder where
 
 import Prelude
@@ -6,7 +5,7 @@ import Prelude
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, empty)
 import Data.Argonaut.Core (Json, toObject)
-import Data.Argonaut.Decode.Cases.XFlex
+import Data.Argonaut.Decode.Cases1
 import Data.Argonaut.Decode.Class
   ( class DecodeJson
   , class GDecodeJson
@@ -66,6 +65,8 @@ instance __builderXFlexDecodeJsonWithCons
   :: ( Alternative f
      , Bind g
      , BuilderXFlexDecodeJsonWith_ g decoderList' decoderRow' list' row' a
+     , Cases1 g decoderList row a
+     , Cases1 g decoderList' row' a
      , Cons field (f value) row' row
      , Cons field decoderValue decoderRow' decoderRow
      , IsSymbol field
@@ -77,8 +78,6 @@ instance __builderXFlexDecodeJsonWithCons
      , RowToList decoderRow' decoderList'
      , Status g
      , TypeEquals decoderValue (Json -> a -> g (f value))
-     , XFlexDecodeCases g decoderList row a
-     , XFlexDecodeCases g decoderList' row' a
      )
   => BuilderXFlexDecodeJsonWith_
        g

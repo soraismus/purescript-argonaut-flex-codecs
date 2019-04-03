@@ -1,13 +1,3 @@
--- are all instances of DecodeCases/TypeEquals necessary
--- still too many copies of of json/object error message
--- maybe the heterogenous library pertains to this; is this redundant?
--- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
--- the others can be based on the general case
--- `unsafeCoerce` is used b/c at this point every Builder's src is {}.
--- Use of `unsafeCoerce` is unsightly, of course,
--- so try to generalize the type signature or introduce a bind-like
--- function for record mergers.
--- Consider using the more-general Flex-scheme with `Identity` or (-> a)
 module Data.Argonaut.Decode.X.Builder where
 
 import Prelude
@@ -15,7 +5,7 @@ import Prelude
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, empty)
 import Data.Argonaut.Core (Json, toObject)
-import Data.Argonaut.Decode.Cases.X
+import Data.Argonaut.Decode.Cases1
 import Data.Argonaut.Decode.Class
   ( class DecodeJson
   , class GDecodeJson
@@ -72,6 +62,8 @@ instance __builderXDecodeJsonWithNil
 instance __builderXDecodeJsonWithCons
   :: ( Bind f
      , BuilderXDecodeJsonWith_ f decoderList' decoderRow' list' row' a
+     , Cases1 f decoderList row a
+     , Cases1 f decoderList' row' a
      , Cons field value row' row
      , Cons field decoderValue decoderRow' decoderRow
      , IsSymbol field
@@ -83,8 +75,6 @@ instance __builderXDecodeJsonWithCons
      , RowToList decoderRow' decoderList'
      , Status f
      , TypeEquals decoderValue (Json -> a -> f value)
-     , XDecodeCases f decoderList row a
-     , XDecodeCases f decoderList' row' a
      )
   => BuilderXDecodeJsonWith_
        f

@@ -1,4 +1,3 @@
--- are all instances of DecodeCases/TypeEquals necessary
 -- still too many copies of of json/object error message
 -- maybe the heterogenous library pertains to this; is this redundant?
 -- 4 cases: 0. gdecode, 1. gdecode leniently, 2. override, 3. override w/ leniency
@@ -8,6 +7,8 @@
 -- so try to generalize the type signature or introduce a bind-like
 -- function for record mergers.
 -- Consider using the more-general Flex-scheme with `Identity` or (-> a)
+-- Put FlexGDecodeJson class in its own file.
+-- Should Lazy values be used in 'builderXFlexDecodeJsonWithBoth'?
 module Data.Argonaut.Decode.Standard where
 
 import Prelude
@@ -15,7 +16,7 @@ import Prelude
 import Control.Alt (class Alt)
 import Control.Alternative (class Alternative, empty)
 import Data.Argonaut.Core (Json, toObject)
-import Data.Argonaut.Decode.Cases.Standard
+import Data.Argonaut.Decode.Cases
 import Data.Argonaut.Decode.Class
   ( class DecodeJson
   , class GDecodeJson
@@ -67,10 +68,10 @@ instance __decodeJsonWithNil
 
 instance __decodeJsonWithCons
   :: ( Bind f
+     , Cases f decoderList row
+     , Cases f decoderList' row'
      , Cons field value row' row
      , Cons field decoderValue decoderRow' decoderRow
-     , DecodeCases f decoderList row
-     , DecodeCases f decoderList' row'
      , DecodeJsonWith_ f decoderList' decoderRow' list' row'
      , IsSymbol field
      , Lacks field row'
@@ -121,7 +122,7 @@ instance __decodeJsonWithCons
         reportError $ getMissingFieldErrorMessage fieldName
 
 class
-  ( DecodeCases f l1 r0
+  ( Cases f l1 r0
   , RowToList r1 l1
   ) <=
   DecodeJsonWith
@@ -136,7 +137,7 @@ class
       -> f (Record r0)
 
 instance decodeJsonWithDecodeJsonWith_
-  :: ( DecodeCases f l1 r0
+  :: ( Cases f l1 r0
      , DecodeJsonWith_ f l1 r1 l0 r0
      , RowToList r0 l0
      , RowToList r1 l1

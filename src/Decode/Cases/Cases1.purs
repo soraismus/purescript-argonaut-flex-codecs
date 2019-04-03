@@ -1,4 +1,4 @@
-module Data.Argonaut.Decode.Cases.Standard where
+module Data.Argonaut.Decode.Cases1 where
 
 import Prelude
 
@@ -36,17 +36,17 @@ import Type.Row
 import Type.Row as Row
 import Unsafe.Coerce (unsafeCoerce)
 
-class DecodeCases
+class Cases1
   (f :: Type -> Type)
-  (list :: RowList)
-  (row :: # Type)
-  | list -> row
+  (l :: RowList)
+  (r :: # Type)
+  a
+  | l -> r
 
-instance decodeCasesCons
-  :: ( Cons field value row' row
-     , DecodeCases f list' row'
-     , TypeEquals decoderValue (Json -> f value)
+instance cases1Nil :: Cases1 f Nil () a
+
+instance cases1Cons
+  :: ( Cons field v r' r
+     , Cases1 f l' r' a
      )
-  => DecodeCases f (Cons field decoderValue list') row
-
-instance decodeCasesNil :: DecodeCases f Nil ()
+  => Cases1 f (Cons field tv l') r a
